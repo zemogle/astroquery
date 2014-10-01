@@ -102,7 +102,7 @@ class IbeClass(BaseQuery):
             dataset=dataset, table=table, columns=columns, width=width,
             height=height, intersect=intersect, most_centered=most_centered)
 
-        # Rause exception, if request failed
+        # Raise exception, if request failed
         response.raise_for_status()
 
         return Table.read(response.content, format='ipac')
