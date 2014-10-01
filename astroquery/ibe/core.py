@@ -217,6 +217,6 @@ class IbeClass(BaseQuery):
             dataset or self.DATASET,
             table or self.TABLE)
 
-        return commons.send_request(url, args, self.TIMEOUT, request_type='GET')
+        return self._request('GET', url, args, timeout=self.TIMEOUT)
 
 Ibe = IbeClass()
