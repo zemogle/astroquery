@@ -273,7 +273,7 @@ class IbeClass(BaseQuery):
 
         return missions
 
-    def list_datasets(self, mission, cache=True):
+    def list_datasets(self, mission=None, cache=True):
         """
         For a given mission, list the available datasets
 
@@ -281,7 +281,7 @@ class IbeClass(BaseQuery):
         ----------
         mission : str
             A mission name.  Must be one of the valid missions from
-            `list_missions`
+            `list_missions`.  Defaults to the configured Mission
         cache : bool
             Cache the query result
 
@@ -291,6 +291,8 @@ class IbeClass(BaseQuery):
             A dictionary containing the dataset URL name as keys and the
             dataset description as values
         """
+        if mission is None:
+            mission = self.MISSION
         if mission not in self.list_missions():
             raise ValueError("Invalid mission specified: {0}."
                              "Must be one of: {1}".format(mission,
@@ -309,7 +311,7 @@ class IbeClass(BaseQuery):
         
         return datasets
 
-    def list_tables(self, mission, dataset, cache=True):
+    def list_tables(self, mission=None, dataset=None, cache=True):
         """
         For a given mission and dataset (see `list_missions`, `list_datasets`),
         return the list of valid table names to query
@@ -318,10 +320,10 @@ class IbeClass(BaseQuery):
         ----------
         mission : str
             A mission name.  Must be one of the valid missions from
-            `list_missions`
+            `list_missions`.  Defaults to the configured Mission
         dataset : str
             A dataset name.  Must be one of the valid dataset from
-            `list_datsets(mission)`
+            `list_datsets(mission)`.  Defaults to the configured Dataset
         cache : bool
             Cache the query result
 
@@ -331,6 +333,11 @@ class IbeClass(BaseQuery):
             A dictionary containing the table URL name as keys and the table
             description as values
         """
+        if mission is None:
+            mission = self.MISSION
+        if dataset is None:
+            dataset = self.DATASET
+
         if mission not in self.list_missions():
             raise ValueError("Invalid mission specified: {0}."
                              "Must be one of: {1}".format(mission,
