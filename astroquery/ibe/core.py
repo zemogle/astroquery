@@ -11,6 +11,7 @@ from __future__ import print_function, division
 
 import os
 import warnings
+import webbrowser
 from bs4 import BeautifulSoup
 
 import astropy.units as u
@@ -364,6 +365,61 @@ class IbeClass(BaseQuery):
     # they're not obviously accessible via API
     #def get_data(self, **kwargs):
     #    return self.query_region_async(retrieve_data=True, **kwargs)
+
+    def show_docs(self, mission=None, dataset=None, table=None):
+        """
+        Open the documentation for a given table in a web browser.
+
+        Parameters
+        ----------
+        mission : str
+            The mission to be used (if not the default mission).
+        dataset : str
+            The dataset to be used (if not the default dataset).
+        table : str
+            The table to be queried (if not the default table).
+        """
+
+        url = os.path.join(
+            self.URL, 'docs',
+            mission or self.MISSION,
+            dataset or self.DATASET,
+            table or self.TABLE)
+
+        return webbrowser.open(url)
+
+    def get_columns(self, mission=None, dataset=None, table=None):
+        """
+        Get the schema for a given table.
+
+        Parameters
+        ----------
+        mission : str
+            The mission to be used (if not the default mission).
+        dataset : str
+            The dataset to be used (if not the default dataset).
+        table : str
+            The table to be queried (if not the default table).
+
+        Returns
+        -------
+        table : `~astropy.table.Table`
+            A table containing a description of the columns
+        """
+
+        url = os.path.join(
+            self.URL, 'search',
+            mission or self.MISSION,
+            dataset or self.DATASET,
+            table or self.TABLE)
+
+        response = self._request(
+            'GET', url, {'FORMAT': 'METADATA'}, timeout=self.TIMEOUT)
+
+        # Raise exception, if request failed
+        response.raise_for_status()
+
+        return Table.read(response.content, format='ipac')
 
 
 Ibe = IbeClass()
