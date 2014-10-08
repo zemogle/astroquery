@@ -291,9 +291,8 @@ class IbeClass(BaseQuery):
 
         Returns
         -------
-        datasets : dict
-            A dictionary containing the dataset URL name as keys and the
-            dataset description as values
+        datasets : list
+            A list of dataset names
         """
         if mission is None:
             mission = self.MISSION
@@ -308,10 +307,10 @@ class IbeClass(BaseQuery):
 
         root = BeautifulSoup(response.content)
         links = root.findAll('a')
-        datasets = {os.path.basename(a.attrs['href']): a.text
+        datasets = [a.text
                     for a in links
                     if a.attrs['href'].count('/')>=4 # shown as '..'; ignore
-                   }
+                   ]
         
         return datasets
 
