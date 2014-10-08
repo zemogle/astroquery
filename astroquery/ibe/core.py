@@ -11,6 +11,7 @@ from __future__ import print_function, division
 
 import os
 import warnings
+from bs4 import BeautifulSoup
 
 import astropy.units as u
 import astropy.coordinates as coord
@@ -107,9 +108,29 @@ class IbeClass(BaseQuery):
 
         return Table.read(response.content, format='ipac')
 
+    def query_region_sia(self, coordinate=None, where=None, mission=None,
+                         dataset=None, table=None, columns=None, width=None,
+                         height=None, intersect='OVERLAPS',
+                         most_centered=False):
+        """
+        Query using simple image access protocol.  See `query_region` for
+        details.  The returned table will include a list of URLs.
+        """
+        response = self.query_region_async(
+            coordinate=coordinate, where=where, mission=mission,
+            dataset=dataset, table=table, columns=columns, width=width,
+            height=height, intersect=intersect, most_centered=most_centered,
+            action='sia')
+
+        # Raise exception, if request failed
+        response.raise_for_status()
+
+        return commons.parse_votable(response.content).get_first_table().to_table()
+
     def query_region_async(
             self, coordinate=None, where=None, mission=None, dataset=None,
             table=None, columns=None, width=None, height=None,
+            action='search',
             intersect='OVERLAPS', most_centered=False):
         """
         For certain missions, this function can be used to search for image and
@@ -167,6 +188,11 @@ class IbeClass(BaseQuery):
             point, this is equivalent to ``CENTER`` and ``COVERS``.
         most_centered : bool
             If True, then only the most centered image is returned.
+        action : 'search', 'data', or 'sia'
+            The action to perform at the server.  The default is 'search',
+            which returns a table of the available data.  'data' requires
+            advanced path construction that is not yet supported. 'sia'
+            provides access to the 'simple image access' IVOA protocol
 
         Returns
         -------
@@ -183,6 +209,9 @@ class IbeClass(BaseQuery):
             raise InvalidQueryError(
                 "Invalid value for `intersects` " +
                 "(must be 'COVERS', 'ENCLOSED', 'CENTER', or 'OVERLAPS')" )
+
+        if action not in ('sia', 'data', 'search'):
+            raise InvalidQueryError("Valid actions are: sia, data, search.")
 
         args = {
             'INTERSECT': intersect
@@ -212,11 +241,133 @@ class IbeClass(BaseQuery):
             args['columns'] = ','.join(columns)
 
         url = os.path.join(
-            self.URL, 'search',
+            self.URL, action,
             mission or self.MISSION,
             dataset or self.DATASET,
             table or self.TABLE)
 
         return self._request('GET', url, args, timeout=self.TIMEOUT)
+
+    def list_missions(self, cache=True):
+        """
+        Return a list of the available missions
+
+        Parameters
+        ----------
+        cache : bool
+            Cache the query result
+        """
+        if hasattr(self, '_missions') and cache:
+            # extra level caching to avoid redoing the BeautifulSoup parsing
+            # unnecessarily
+            missions = self._missions
+        else:
+            url = self.URL+"search/"
+            response = self._request('GET', url, timeout=self.TIMEOUT,
+                                     cache=cache)
+
+            root = BeautifulSoup(response.content)
+            links = root.findAll('a')
+            missions = [os.path.basename(a.attrs['href']) for a in links]
+            self._missions = missions
+
+        return missions
+
+    def list_datasets(self, mission=None, cache=True):
+        """
+        For a given mission, list the available datasets
+
+        Parameters
+        ----------
+        mission : str
+            A mission name.  Must be one of the valid missions from
+            `list_missions`.  Defaults to the configured Mission
+        cache : bool
+            Cache the query result
+
+        Returns
+        -------
+        datasets : dict
+            A dictionary containing the dataset URL name as keys and the
+            dataset description as values
+        """
+        if mission is None:
+            mission = self.MISSION
+        if mission not in self.list_missions():
+            raise ValueError("Invalid mission specified: {0}."
+                             "Must be one of: {1}".format(mission,
+                                                          self.list_missions()))
+
+        url = "{URL}search/{mission}/".format(URL=self.URL, mission=mission)
+        response = self._request('GET', url, timeout=self.TIMEOUT,
+                                 cache=cache)
+
+        root = BeautifulSoup(response.content)
+        links = root.findAll('a')
+        datasets = {os.path.basename(a.attrs['href']): a.text
+                    for a in links
+                    if a.attrs['href'].count('/')>=4 # shown as '..'; ignore
+                   }
+        
+        return datasets
+
+    def list_tables(self, mission=None, dataset=None, cache=True):
+        """
+        For a given mission and dataset (see `list_missions`, `list_datasets`),
+        return the list of valid table names to query
+
+        Parameters
+        ----------
+        mission : str
+            A mission name.  Must be one of the valid missions from
+            `list_missions`.  Defaults to the configured Mission
+        dataset : str
+            A dataset name.  Must be one of the valid dataset from
+            `list_datsets(mission)`.  Defaults to the configured Dataset
+        cache : bool
+            Cache the query result
+
+        Returns
+        -------
+        tables : dict
+            A dictionary containing the table URL name as keys and the table
+            description as values
+        """
+        if mission is None:
+            mission = self.MISSION
+        if dataset is None:
+            dataset = self.DATASET
+
+        if mission not in self.list_missions():
+            raise ValueError("Invalid mission specified: {0}."
+                             "Must be one of: {1}".format(mission,
+                                                          self.list_missions()))
+
+        if dataset not in self.list_datasets(mission, cache=cache):
+            raise ValueError("Invalid dataset {0} specified for mission {1}."
+                             "Must be one of: {2}".format(dataset, mission,
+                                                          self.list_datsets(mission,
+                                                                            cache=True)))
+
+        url = "{URL}search/{mission}/{dataset}/".format(URL=self.URL,
+                                                         mission=mission,
+                                                         dataset=dataset)
+        response = self._request('GET', url, timeout=self.TIMEOUT,
+                                 cache=cache)
+
+        root = BeautifulSoup(response.content)
+        links = root.findAll('a')
+        datasets = {os.path.basename(a.attrs['href']): a.text
+                    for a in links
+                    if a.attrs['href'].count('/')>=5 # shown as '..'; ignore
+                   }
+        
+        return datasets
+
+    # Unfortunately, the URL construction for each data set is different, and
+    # they're not obviously accessible via API
+    #def get_data(self, **kwargs):
+    #    return self.query_region_async(retrieve_data=True, **kwargs)
+
 
 Ibe = IbeClass()
