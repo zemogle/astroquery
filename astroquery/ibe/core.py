@@ -332,9 +332,8 @@ class IbeClass(BaseQuery):
 
         Returns
         -------
-        tables : dict
-            A dictionary containing the table URL name as keys and the table
-            description as values
+        tables : list
+            A list of table names
         """
         if mission is None:
             mission = self.MISSION
@@ -359,13 +358,7 @@ class IbeClass(BaseQuery):
                                  cache=cache)
 
         root = BeautifulSoup(response.content)
-        links = root.findAll('a')
-        datasets = {os.path.basename(a.attrs['href']): a.text
-                    for a in links
-                    if a.attrs['href'].count('/')>=5 # shown as '..'; ignore
-                   }
-        
-        return datasets
+        return [tr.find('td').string for tr in root.findAll('tr')[1:]]
 
     # Unfortunately, the URL construction for each data set is different, and
     # they're not obviously accessible via API
