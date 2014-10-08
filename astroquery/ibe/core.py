@@ -212,6 +212,10 @@ class IbeClass(BaseQuery):
 
         if action not in ('sia', 'data', 'search'):
             raise InvalidQueryError("Valid actions are: sia, data, search.")
+        if action == 'data':
+            raise NotImplementedError(
+                "The action='data' option is a placeholder for future " +
+                "functionality.")
 
         args = {
             'INTERSECT': intersect
