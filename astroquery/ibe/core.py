@@ -108,8 +108,8 @@ class IbeClass(BaseQuery):
 
         return Table.read(response.content, format='ipac')
 
-    def query_region_sia(self, coordinate=None, where=None, mission=None,
-                         dataset=None, table=None, columns=None, width=None,
+    def query_region_sia(self, coordinate=None, mission=None,
+                         dataset=None, table=None, width=None,
                          height=None, intersect='OVERLAPS',
                          most_centered=False):
         """
@@ -117,8 +117,8 @@ class IbeClass(BaseQuery):
         details.  The returned table will include a list of URLs.
         """
         response = self.query_region_async(
-            coordinate=coordinate, where=where, mission=mission,
-            dataset=dataset, table=table, columns=columns, width=width,
+            coordinate=coordinate, mission=mission,
+            dataset=dataset, table=table, width=width,
             height=height, intersect=intersect, most_centered=most_centered,
             action='sia')
 
